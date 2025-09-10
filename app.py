@@ -28,22 +28,19 @@ from sklearn.ensemble import (
     AdaBoostClassifier,
     GradientBoostingClassifier,
 )
+import joblib
 
-# --- Data Loading and Preprocessing (from the user's notebook) ---
-# This part of the code is a direct translation of the user's data cleaning and preparation steps.
-# A function is used to encapsulate the preprocessing logic.
-
-def preprocess_data():
+# --- GLOBAL DATA LOADING & PREPROCESSING (for Model Training) ---
+# This code runs once when the app starts, handling the full data pipeline.
+def preprocess_data_for_modeling():
     # Part 2: Load the data
     d1 = pd.read_csv('Bank Marketing Data Set.csv')
     
     # Part 3: Data Cleaning & Imputation
-    # Create new variables for unknown values
     significant_cat_variables = ['education', 'job']
     for var in significant_cat_variables:
         d1[var + '_un'] = (d1[var] == 'unknown').astype(int)
 
-    # Impute missing values based on project insights
     d1.loc[(d1['age'] > 60) & (d1['job'] == 'unknown'), 'job'] = 'retired'
     d1.loc[(d1['education'] == 'unknown') & (d1['job'] == 'admin.'), 'education'] = 'secondary'
     d1.loc[(d1['education'] == 'unknown') & (d1['job'] == 'blue-collar'), 'education'] = 'secondary'
@@ -61,15 +58,14 @@ def preprocess_data():
     d1.loc[(d1['education'] == 'tertiary') & (d1['job'] == 'unknown'), 'job'] = 'blue-collar'
     d1.loc[(d1['education'] == 'primary') & (d1['job'] == 'unknown'), 'job'] = 'management'
     
-    d1['pdays'].replace(to_replace=-1, value=0, inplace=True)
+    d1['pdays'] = d1['pdays'].replace(to_replace=-1, value=0)
     d1.rename(columns={'class': 'deposit', 'campain': 'campaign'}, inplace=True)
-    d1['deposit'].replace(to_replace=[1, 2], value=[0, 1], inplace=True)
+    d1['deposit'] = d1['deposit'].replace(to_replace=[1, 2], value=[0, 1])
     d1.drop(['education_un', 'job_un'], axis=1, inplace=True)
     
     # Cube root transformation
     num_cols = ['age', 'balance', 'duration', 'campaign', 'pdays', 'previous', 'day']
     for col in num_cols:
-        # Handle negative values for cube root
         d1[col] = d1[col].apply(lambda x: np.cbrt(x) if x >= 0 else -np.cbrt(abs(x)))
 
     # Dummy Encoding
@@ -77,29 +73,24 @@ def preprocess_data():
     cat_cols = ['job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'month', 'poutcome']
     d2 = pd.get_dummies(data=d2, columns=cat_cols, drop_first=True)
     
-    # Feature Selection based on VIF and p-values
-    # (Simplified for dashboard code, as VIF calculation is complex and better done offline)
     cols_to_drop_pre_modeling = ['day', 'previous', 'job_retired', 'marital_single', 'education_secondary', 'default_yes', 'contact_telephone', 'poutcome_other', 'poutcome_unknown', 'month_may']
     final_features = [col for col in d2.columns if col not in cols_to_drop_pre_modeling + ['deposit']]
     
     X = d2[final_features]
     y = d2['deposit']
 
-    # SMOTE for Imbalance (Oversampling)
     sm = SMOTE(random_state=2)
     X_resampled, y_resampled = sm.fit_resample(X, y)
     
-    # Train/Test split for resampled data
     X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled, test_size=0.3, random_state=1)
     
     return X, y, X_resampled, y_resampled, X_train, X_test, y_train, y_test, final_features
 
-# Run the preprocessing
-X_data, y_data, X_resampled, y_resampled, X_train, X_test, y_train, y_test, final_features = preprocess_data()
+# Run the preprocessing for modeling
+X_data, y_data, X_resampled, y_resampled, X_train, X_test, y_train, y_test, final_features = preprocess_data_for_modeling()
 
 # --- Model Loading (instead of training) ---
-import joblib
-
+# Assuming the models have been pre-trained and saved using a separate script.
 models = {
     'Logistic Regression': joblib.load('trained_model_logistic_regression.joblib'),
     'Decision Tree': joblib.load('trained_model_decision_tree.joblib'),
@@ -110,10 +101,7 @@ models = {
     'Gradient Boosting': joblib.load('trained_model_gradient_boosting.joblib'),
     'Stacked Classifier': joblib.load('trained_model_stacked_classifier.joblib')
 }
-
 model_results = models
-
-# Final model chosen by the user
 final_model = model_results['Random Forest']
 y_pred_final = final_model.predict(X_test)
 final_cm = confusion_matrix(y_test, y_pred_final)
@@ -139,14 +127,18 @@ def get_metrics_df(X, y):
             'ROC-AUC': roc_auc,
         })
     return pd.DataFrame(df_rows).round(4)
-
 metrics_train_df = get_metrics_df(X_test, y_test)
 
-# Final model chosen by the user
-final_model = model_results['Random Forest']
-y_pred_final = final_model.predict(X_test)
-final_cm = confusion_matrix(y_test, y_pred_final)
-final_cr = classification_report(y_test, y_pred_final, output_dict=True)
+# --- GLOBAL DATA LOADING & PREPROCESSING (for EDA) ---
+# This function loads and cleans data specifically for the EDA plots.
+def preprocess_eda_data():
+    d1 = pd.read_csv('Bank Marketing Data Set.csv')
+    d1.rename(columns={'class': 'deposit', 'campain': 'campaign'}, inplace=True)
+    d1['deposit'] = d1['deposit'].replace(to_replace=[1, 2], value=[0, 1])
+    d1['pdays'] = d1['pdays'].replace(to_replace=-1, value=0)
+    return d1
+d1_eda = preprocess_eda_data()
+
 
 # --- Dashboard Layout ---
 app = Dash(__name__, external_stylesheets=[dbc.themes.FLATLY])
@@ -172,7 +164,6 @@ header = dbc.Navbar(
 ask_tab = dcc.Markdown(
     """
     ### ❓ **ASK** — Defining the Business Problem
-
     This project's main goal is to help a bank optimize its marketing strategy and increase the effectiveness of its telemarketing campaigns. By analyzing past customer data, we aim to predict which customers are most likely to subscribe to a term deposit. This will allow the bank to focus its efforts on high-potential customers, saving time and resources while increasing customer satisfaction by reducing unwanted calls.
 
     **Key Objectives:**
@@ -325,14 +316,14 @@ app.layout = dbc.Container(
 )
 def update_eda_plots(dummy):
     # Age plot
-    d1 = pd.read_csv('Bank Marketing Data Set.csv')
-    d1.loc[d1["age"] < 30, 'age_group'] = 20
-    d1.loc[(d1["age"] >= 30) & (d1["age"] <= 39), 'age_group'] = 30
-    d1.loc[(d1["age"] >= 40) & (d1["age"] <= 49), 'age_group'] = 40
-    d1.loc[(d1["age"] >= 50) & (d1["age"] <= 59), 'age_group'] = 50
-    d1.loc[d1["age"] >= 60, 'age_group'] = 60
+    d1_temp_age = d1_eda.copy()
+    d1_temp_age.loc[d1_temp_age["age"] < 30, 'age_group'] = 20
+    d1_temp_age.loc[(d1_temp_age["age"] >= 30) & (d1_temp_age["age"] <= 39), 'age_group'] = 30
+    d1_temp_age.loc[(d1_temp_age["age"] >= 40) & (d1_temp_age["age"] <= 49), 'age_group'] = 40
+    d1_temp_age.loc[(d1_temp_age["age"] >= 50) & (d1_temp_age["age"] <= 59), 'age_group'] = 50
+    d1_temp_age.loc[d1_temp_age["age"] >= 60, 'age_group'] = 60
     
-    count_age_response_pct = pd.crosstab(d1['deposit'], d1['age_group']).apply(lambda x: x / x.sum() * 100)
+    count_age_response_pct = pd.crosstab(d1_temp_age['deposit'], d1_temp_age['age_group']).apply(lambda x: x / x.sum() * 100)
     count_age_response_pct = count_age_response_pct.transpose()
     age_plot = go.Figure(data=[
         go.Bar(name='Not Subscribed', x=count_age_response_pct.index, y=count_age_response_pct[0], marker_color='red'),
@@ -346,13 +337,14 @@ def update_eda_plots(dummy):
     )
     
     # Balance plot
-    d1['balance'].replace(to_replace=-1, value=0, inplace=True)
-    d1.loc[d1["balance"] <= 0, 'balance_group'] = 'no balance'
-    d1.loc[(d1["balance"] > 0) & (d1["balance"] <= 1000), 'balance_group'] = 'low balance'
-    d1.loc[(d1["balance"] > 1000) & (d1["balance"] <= 5000), 'balance_group'] = 'average balance'
-    d1.loc[(d1["balance"] > 5000), 'balance_group'] = 'high balance'
+    d1_temp_balance = d1_eda.copy()
+    d1_temp_balance['balance'].replace(to_replace=-1, value=0, inplace=True)
+    d1_temp_balance.loc[d1_temp_balance["balance"] <= 0, 'balance_group'] = 'no balance'
+    d1_temp_balance.loc[(d1_temp_balance["balance"] > 0) & (d1_temp_balance["balance"] <= 1000), 'balance_group'] = 'low balance'
+    d1_temp_balance.loc[(d1_temp_balance["balance"] > 1000) & (d1_temp_balance["balance"] <= 5000), 'balance_group'] = 'average balance'
+    d1_temp_balance.loc[(d1_temp_balance["balance"] > 5000), 'balance_group'] = 'high balance'
     
-    count_balance_response_pct = pd.crosstab(d1['deposit'], d1['balance_group']).apply(lambda x: x / x.sum() * 100)
+    count_balance_response_pct = pd.crosstab(d1_temp_balance['deposit'], d1_temp_balance['balance_group']).apply(lambda x: x / x.sum() * 100)
     count_balance_response_pct = count_balance_response_pct.transpose()
     balance_plot = go.Figure(data=[
         go.Bar(name='Not Subscribed', x=count_balance_response_pct.index, y=count_balance_response_pct[0], marker_color='skyblue'),
@@ -366,10 +358,9 @@ def update_eda_plots(dummy):
     )
 
     # Month plot
-    d1['deposit'].replace(to_replace=[1, 2], value=[0, 1], inplace=True)
-    d1.rename(columns={'class': 'deposit', 'campain': 'campaign'}, inplace=True)
+    d1_temp_month = d1_eda.copy()
     month_order = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
-    count_month_response_pct = pd.crosstab(d1['deposit'], d1['month']).apply(lambda x: x / x.sum() * 100).reindex(columns=month_order)
+    count_month_response_pct = pd.crosstab(d1_temp_month['deposit'], d1_temp_month['month']).apply(lambda x: x / x.sum() * 100).reindex(columns=month_order)
     
     month_plot = go.Figure(data=go.Scatter(
         x=count_month_response_pct.columns,
@@ -437,26 +428,5 @@ def update_model_performance_plots(dummy):
 
     return model_comparison_fig, final_cm_fig, final_roc_fig
 
-# if __name__ == '__main__':
-#     # Save the dataframe to a CSV file to be read by the Dash app.
-#     # This is a workaround for the notebook environment. In a real project,
-#     # the data would be loaded directly from a database or file.
-#     d1 = pd.read_csv('Bank Marketing Data Set.csv')
-#     d1['deposit'].replace(to_replace=[1, 2], value=[0, 1], inplace=True)
-#     d1.rename(columns={'class': 'deposit', 'campain': 'campaign'}, inplace=True)
-#     d1.to_csv('Bank Marketing Data Set.csv', index=False)
-    
-#     app.run(debug=True)
-
 if __name__ == '__main__':
-    # You already called preprocess_data() at the top of the script.
-    # The variables X_data, y_data, etc., already contain the cleaned data.
-    
-    # You do not need to re-load and re-process the data here.
-    # This section of code below is the source of your error.
-    # d1 = pd.read_csv('Bank Marketing Data Set.csv')
-    # d1['deposit'].replace(to_replace=[1, 2], value=[0, 1], inplace=True)
-    # d1.rename(columns={'class': 'deposit', 'campain': 'campaign'}, inplace=True)
-    # d1.to_csv('Bank Marketing Data Set.csv', index=False)
-    
     app.run(debug=True)
