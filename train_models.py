@@ -13,7 +13,8 @@ from sklearn.ensemble import (
     AdaBoostClassifier,
     GradientBoostingClassifier,
 )
-import joblib # A better library for saving models
+import joblib
+import os  # Import the os module
 
 def preprocess_data():
     # Your existing preprocess_data() function
@@ -86,11 +87,17 @@ models_to_train = {
     ], meta_classifier=KNeighborsClassifier(n_neighbors=5, weights='distance'))
 }
 
+# --- Create the models/ folder if it doesn't exist ---
+model_dir = 'models'
+if not os.path.exists(model_dir):
+    os.makedirs(model_dir)
+
 # Train and save each model
 print("Starting model training...")
 for name, model in models_to_train.items():
     print(f"Training {name}...")
     model.fit(X_train, y_train)
-    joblib.dump(model, f'trained_model_{name.replace(" ", "_").lower()}.joblib')
-    print(f"Finished training and saving {name}.")
+    # Update the file path to include the 'models/' folder
+    joblib.dump(model, os.path.join(model_dir, f'trained_model_{name.replace(" ", "_").lower()}.joblib'))
+    print(f"Finished training and saving {name} to {model_dir}/.")
 print("All models trained and saved successfully.")

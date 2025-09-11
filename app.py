@@ -92,14 +92,14 @@ X_data, y_data, X_resampled, y_resampled, X_train, X_test, y_train, y_test, fina
 # --- Model Loading (instead of training) ---
 # Assuming the models have been pre-trained and saved using a separate script.
 models = {
-    'Logistic Regression': joblib.load('trained_model_logistic_regression.joblib'),
-    'Decision Tree': joblib.load('trained_model_decision_tree.joblib'),
-    'KNN Classifier': joblib.load('trained_model_knn_classifier.joblib'),
-    'Random Forest': joblib.load('trained_model_random_forest.joblib'),
-    'Bagging Classifier': joblib.load('trained_model_bagging_classifier.joblib'),
-    'AdaBoost': joblib.load('trained_model_adaboost.joblib'),
-    'Gradient Boosting': joblib.load('trained_model_gradient_boosting.joblib'),
-    'Stacked Classifier': joblib.load('trained_model_stacked_classifier.joblib')
+    'Logistic Regression': joblib.load('models/trained_model_logistic_regression.joblib'),
+    'Decision Tree': joblib.load('models/trained_model_decision_tree.joblib'),
+    'KNN Classifier': joblib.load('models/trained_model_knn_classifier.joblib'),
+    'Random Forest': joblib.load('models/trained_model_random_forest.joblib'),
+    'Bagging Classifier': joblib.load('models/trained_model_bagging_classifier.joblib'),
+    'AdaBoost': joblib.load('models/trained_model_adaboost.joblib'),
+    'Gradient Boosting': joblib.load('models/trained_model_gradient_boosting.joblib'),
+    'Stacked Classifier': joblib.load('models/trained_model_stacked_classifier.joblib')
 }
 model_results = models
 final_model = model_results['Random Forest']
