@@ -18,7 +18,7 @@ import os  # Import the os module
 
 def preprocess_data():
     # Your existing preprocess_data() function
-    d1 = pd.read_csv('Bank Marketing Data Set.csv')
+    d1 = pd.read_csv('dataset/Bank Marketing Data Set.csv')
     
     # Data Cleaning & Imputation
     significant_cat_variables = ['education', 'job']

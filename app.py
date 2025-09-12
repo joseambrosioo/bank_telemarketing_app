@@ -34,7 +34,7 @@ import joblib
 # This code runs once when the app starts, handling the full data pipeline.
 def preprocess_data_for_modeling():
     # Part 2: Load the data
-    d1 = pd.read_csv('Bank Marketing Data Set.csv')
+    d1 = pd.read_csv('dataset/Bank Marketing Data Set.csv')
     
     # Part 3: Data Cleaning & Imputation
     significant_cat_variables = ['education', 'job']
@@ -132,7 +132,7 @@ metrics_train_df = get_metrics_df(X_test, y_test)
 # --- GLOBAL DATA LOADING & PREPROCESSING (for EDA) ---
 # This function loads and cleans data specifically for the EDA plots.
 def preprocess_eda_data():
-    d1 = pd.read_csv('Bank Marketing Data Set.csv')
+    d1 = pd.read_csv('dataset/Bank Marketing Data Set.csv')
     d1.rename(columns={'class': 'deposit', 'campain': 'campaign'}, inplace=True)
     d1['deposit'] = d1['deposit'].replace(to_replace=[1, 2], value=[0, 1])
     d1['pdays'] = d1['pdays'].replace(to_replace=-1, value=0)
@@ -150,10 +150,10 @@ header = dbc.Navbar(
             html.Div(
                 [
                     html.Span("🏦", className="me-2"),
-                    dbc.NavbarBrand("Bank Marketing Campaign Success", class_name="fw-bold", style={"color": "black"}),
+                    dbc.NavbarBrand("Bank Marketing Campaign Success", class_name="fw-bold text-wrap", style={"color": "black"}),
                 ], className="d-flex align-items-center"
             ),
-            dbc.Badge("Interactive Dashboard", color="primary", className="ms-auto")
+            dbc.Badge("Dashboard", color="primary", className="ms-auto")
         ]
     ),
     color="light",
