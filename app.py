@@ -29,15 +29,12 @@ from sklearn.ensemble import (
     GradientBoostingClassifier,
 )
 import joblib
-import dash_table # Add this import for the DataTable
+import dash_table
 
 # --- GLOBAL DATA LOADING & PREPROCESSING (for Model Training) ---
-# This code runs once when the app starts, handling the full data pipeline.
 def preprocess_data_for_modeling():
-    # Part 2: Load the data
     d1 = pd.read_csv('dataset/Bank Marketing Data Set.csv')
     
-    # Part 3: Data Cleaning & Imputation
     significant_cat_variables = ['education', 'job']
     for var in significant_cat_variables:
         d1[var + '_un'] = (d1[var] == 'unknown').astype(int)
@@ -64,12 +61,10 @@ def preprocess_data_for_modeling():
     d1['deposit'] = d1['deposit'].replace(to_replace=[1, 2], value=[0, 1])
     d1.drop(['education_un', 'job_un'], axis=1, inplace=True)
     
-    # Cube root transformation
     num_cols = ['age', 'balance', 'duration', 'campaign', 'pdays', 'previous', 'day']
     for col in num_cols:
         d1[col] = d1[col].apply(lambda x: np.cbrt(x) if x >= 0 else -np.cbrt(abs(x)))
 
-    # Dummy Encoding
     d2 = d1.copy()
     cat_cols = ['job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'month', 'poutcome']
     d2 = pd.get_dummies(data=d2, columns=cat_cols, drop_first=True)
@@ -87,11 +82,9 @@ def preprocess_data_for_modeling():
     
     return X, y, X_resampled, y_resampled, X_train, X_test, y_train, y_test, final_features
 
-# Run the preprocessing for modeling
 X_data, y_data, X_resampled, y_resampled, X_train, X_test, y_train, y_test, final_features = preprocess_data_for_modeling()
 
 # --- Model Loading (instead of training) ---
-# Assuming the models have been pre-trained and saved using a separate script.
 models = {
     'Logistic Regression': joblib.load('models/trained_model_logistic_regression.joblib'),
     'Decision Tree': joblib.load('models/trained_model_decision_tree.joblib'),
@@ -108,7 +101,6 @@ y_pred_final = final_model.predict(X_test)
 final_cm = confusion_matrix(y_test, y_pred_final)
 final_cr = classification_report(y_test, y_pred_final, output_dict=True)
 
-# Helper function to get model metrics
 def get_metrics_df(X, y):
     df_rows = []
     for name, model in model_results.items():
@@ -131,7 +123,6 @@ def get_metrics_df(X, y):
 metrics_train_df = get_metrics_df(X_test, y_test)
 
 # --- GLOBAL DATA LOADING & PREPROCESSING (for EDA) ---
-# This function loads and cleans data specifically for the EDA plots.
 def preprocess_eda_data():
     d1 = pd.read_csv('dataset/Bank Marketing Data Set.csv')
     d1.rename(columns={'class': 'deposit', 'campain': 'campaign'}, inplace=True)
@@ -140,7 +131,6 @@ def preprocess_eda_data():
     return d1
 d1_eda = preprocess_eda_data()
 
-# Helper function to generate column definitions with types
 def get_column_definitions(df):
     cols = []
     for col in df.columns:
@@ -150,9 +140,7 @@ def get_column_definitions(df):
             cols.append({"name": col, "id": col, "type": "text"})
     return cols
 
-# Get the column definitions with correct types
 columns_with_types = get_column_definitions(d1_eda)
-
 
 # --- Dashboard Layout ---
 app = Dash(__name__, external_stylesheets=[dbc.themes.FLATLY])
@@ -197,16 +185,20 @@ prepare_tab = html.Div(
         html.P("Our dataset contains 45,211 records of existing bank customers who were contacted via phone calls. Each record includes 17 variables such as demographics, job, education, and past campaign results. A key part of our preparation involved addressing 'unknown' values in categorical columns like 'job' and 'education.' We used a logical approach to impute these values, for instance, by inferring a person's education level based on their job. We also converted the target variable, 'deposit' (whether they subscribed or not), to a binary format (1 for 'yes', 0 for 'no') for easier modeling."),
         
         html.H5("Handling Outliers and Data Distribution"),
-        html.P("Many of the numerical features, like `age` and `balance`, were not normally distributed and contained many extreme values, or 'outliers.' To correct this, we applied a **cube root transformation** to the data. This technique is especially useful for handling both positive and negative outliers and making the data more suitable for statistical analysis and machine learning models."),
+        html.P([
+            "Many of the numerical features, like `age` and `balance`, were not normally distributed and contained many extreme values, or 'outliers.' To correct this, we applied a ", html.B("cube root transformation"), " to the data. This technique is especially useful for handling both positive and negative outliers and making the data more suitable for statistical analysis and machine learning models."
+        ]),
         
         html.H5("Feature Engineering and Selection"),
-        html.P("We converted all categorical variables (like `job` and `marital`) into numerical format using **dummy encoding**. This process creates a new binary column for each category, allowing machine learning models to understand them. For example, a single `job` column becomes multiple columns like `job_blue-collar` and `job_management`. We also performed statistical tests (Chi-square and t-tests) and analyzed **Variance Inflation Factor (VIF)** to ensure that our features were not overly correlated with each other, a condition known as **multicollinearity**. This step is crucial for building a stable and reliable model."),
+        html.P([
+            "We converted all categorical variables (like `job` and `marital`) into numerical format using ", html.B("dummy encoding"), ". This process creates a new binary column for each category, allowing machine learning models to understand them. For example, a single `job` column becomes multiple columns like `job_blue-collar` and `job_management`. We also performed statistical tests (Chi-square and t-tests) and analyzed ", html.B("Variance Inflation Factor (VIF)"), " to ensure that our features were not overly correlated with each other, a condition known as ", html.B("multicollinearity"), ". This step is crucial for building a stable and reliable model."
+        ]),
         
         html.H5("Addressing Data Imbalance"),
         html.P([
             "A critical finding was that our target variable, `deposit`, was heavily imbalanced: only about ",
             html.B(f"{round(y_data.value_counts(normalize=True).loc[1] * 100, 2)}%"),
-            " of customers subscribed. A simple model could get a high accuracy score by just predicting 'no' for everyone, which would be useless. To solve this, we used **SMOTE (Synthetic Minority Over-sampling Technique)**. This technique creates synthetic data points for the minority class ('yes') to balance the dataset. This ensures our models learn to recognize and predict both outcomes equally well."
+            " of customers subscribed. A simple model could get a high accuracy score by just predicting 'no' for everyone, which would be useless. To solve this, we used ", html.B("SMOTE (Synthetic Minority Over-sampling Technique)"), ". This technique creates synthetic data points for the minority class ('yes') to balance the dataset. This ensures our models learn to recognize and predict both outcomes equally well."
         ]),
         
         html.H5("Dataset Sample (First 10 Rows)"),
@@ -285,7 +277,7 @@ analyze_tab = html.Div(
                         dcc.Graph(id="model-comparison-plot", figure=go.Figure()),
                         
                         html.P([
-                            "Based on the F1-Score and ROC-AUC, the **Random Forest**, **Bagging**, and **Stacked** classifiers performed exceptionally well. We selected the **Random Forest Classifier** as our final model due to its high performance and strong interpretability."
+                            "Based on the F1-Score and ROC-AUC, the ", html.B("Random Forest"), ", ", html.B("Bagging"), ", and ", html.B("Stacked"), " classifiers performed exceptionally well. We selected the ", html.B("Random Forest Classifier"), " as our final model due to its high performance and strong interpretability."
                         ]),
                         
                         html.H5("Final Model Performance: Random Forest Classifier"),
@@ -419,7 +411,7 @@ def update_eda_plots(dummy):
     Output("model-comparison-plot", "figure"),
     Output("final-confusion-matrix", "figure"),
     Output("final-roc-curve", "figure"),
-    Input("model-comparison-plot", "id") # Dummy input
+    Input("model-comparison-plot", "id")
 )
 def update_model_performance_plots(dummy):
     # Model Comparison Plot
