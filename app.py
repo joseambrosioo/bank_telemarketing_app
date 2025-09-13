@@ -29,6 +29,7 @@ from sklearn.ensemble import (
     GradientBoostingClassifier,
 )
 import joblib
+import dash_table # Add this import for the DataTable
 
 # --- GLOBAL DATA LOADING & PREPROCESSING (for Model Training) ---
 # This code runs once when the app starts, handling the full data pipeline.
@@ -139,6 +140,19 @@ def preprocess_eda_data():
     return d1
 d1_eda = preprocess_eda_data()
 
+# Helper function to generate column definitions with types
+def get_column_definitions(df):
+    cols = []
+    for col in df.columns:
+        if pd.api.types.is_numeric_dtype(df[col]):
+            cols.append({"name": col, "id": col, "type": "numeric"})
+        else:
+            cols.append({"name": col, "id": col, "type": "text"})
+    return cols
+
+# Get the column definitions with correct types
+columns_with_types = get_column_definitions(d1_eda)
+
 
 # --- Dashboard Layout ---
 app = Dash(__name__, external_stylesheets=[dbc.themes.FLATLY])
@@ -194,6 +208,31 @@ prepare_tab = html.Div(
             html.B(f"{round(y_data.value_counts(normalize=True).loc[1] * 100, 2)}%"),
             " of customers subscribed. A simple model could get a high accuracy score by just predicting 'no' for everyone, which would be useless. To solve this, we used **SMOTE (Synthetic Minority Over-sampling Technique)**. This technique creates synthetic data points for the minority class ('yes') to balance the dataset. This ensures our models learn to recognize and predict both outcomes equally well."
         ]),
+        
+        html.H5("Dataset Sample (First 10 Rows)"),
+        dash_table.DataTable(
+            id='sample-table',
+            columns=columns_with_types,
+            data=d1_eda.head(10).to_dict('records'),
+            sort_action="native",
+            filter_action="native",
+            page_action="none",
+            style_table={'overflowX': 'auto', 'width': '100%'},
+            style_header={
+                'backgroundColor': 'rgb(230, 230, 230)',
+                'fontWeight': 'bold',
+                'textAlign': 'center',
+            },
+            style_cell={
+                'textAlign': 'left',
+                'padding': '5px',
+                'font-size': '12px',
+                'minWidth': '80px', 'width': 'auto', 'maxWidth': '150px',
+                'overflow': 'hidden',
+                'textOverflow': 'ellipsis',
+            },
+        ),
+        html.Br(),
     ], className="p-4"
 )
 
