@@ -144,6 +144,7 @@ columns_with_types = get_column_definitions(d1_eda)
 
 # --- Dashboard Layout ---
 app = Dash(__name__, external_stylesheets=[dbc.themes.FLATLY])
+app.title = "Bank Marketing Campaign Success"
 server = app.server
 
 header = dbc.Navbar(
